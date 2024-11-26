@@ -25,7 +25,7 @@ app = FastAPI()
 # Update CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["http://localhost:5173"] for more security
+    allow_origins=["https://ricco.ai", "https://www.ricco.ai"],  # Update with your actual domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

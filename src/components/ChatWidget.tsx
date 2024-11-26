@@ -31,9 +31,7 @@ const ChatWidget: React.FC = () => {
     useEffect(() => {
         if (sessionId && isOpen && !ws) {
             // Try both secure and non-secure connections
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.hostname;
-            const websocket = new WebSocket(`${protocol}//${host}/ws/${sessionId}`);
+            const websocket = new WebSocket(`wss://ricco-ai-lihf.onrender.com/ws/${sessionId}`);
             
             websocket.onopen = () => {
                 console.log('Connected to chat server');
