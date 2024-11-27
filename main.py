@@ -33,54 +33,42 @@ app.add_middleware(
 
 class ChatBot:
     def __init__(self):
-        # Initialize Pinecone
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-        index = pc.Index("ricco-ai-chatbot")
-
-        description = index.describe_index_stats()
-        print(f"Index info: {description}")
-    
-        # Initialize NVIDIA API client
-        self.client = OpenAI(
-            api_key=os.getenv("NVIDIA_API_KEY"),
-            base_url="https://integrate.api.nvidia.com/v1"
-        )
-
-        # Initialize embeddings with explicit configuration
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sangmini/msmarco-cotmae-MiniLM-L12_en-ko-ja",
-            model_kwargs={
-                'device': 'cpu',
-                'trust_remote_code': True
-            },
-            encode_kwargs={
-                'normalize_embeddings': True,
-                'batch_size': 8
-            }
-        )
-    
-        # Initialize vectorstore
-        self.vectorstore = PineconeVectorStore(
-            index=index,
-            embedding=self.embeddings,
-            text_key="text",
-            namespace=""
-        )
-        
+        # Initialize basic configurations
+        self.embeddings = None
+        self.vectorstore = None
         self.memory_client = None
-        self.make_webhook_url = os.getenv("MAKE_WEBHOOK_URL")
         
-        # Chat configuration
+        # Don't initialize everything in constructor
+        self.initialize_pinecone()
+        
+    def initialize_pinecone(self):
+        # Only initialize when needed
+        if not self.vectorstore:
+            pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+            index = pc.Index("ricco-ai-chatbot")
+            
+            # Initialize embeddings with minimal settings
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",  # Smaller model
+                model_kwargs={'device': 'cpu'}
+            )
+
+            # Initialize vectorstore with minimal settings
+            self.vectorstore = PineconeVectorStore(
+                index=index,
+                embedding=self.embeddings,
+                text_key="text",
+                namespace=""
+            )
+        
+        # Chat configuration with smaller context window
         self.chat_config = {
             "model": "meta/llama-3.1-405b-instruct",
             "temperature": 0.7,
             "top_p": 0.7,
-            "max_tokens": 150,
+            "max_tokens": 100,  # Reduced from 150
             "stream": True
         }
-        
-        # Store conversation history
-        self.conversations: Dict[str, List[Dict]] = {}
 
     async def get_llm_response(self, prompt: str, session_id: str) -> str:
         # Get conversation history
@@ -177,23 +165,33 @@ class ChatBot:
                 return "Sorry, there was an error with the scheduling system. Please try again later."
 
     def load_documents(self, directory: str):
-        documents = []
-        for file in os.listdir(directory):
-            if file.endswith('.txt'):
-                loader = TextLoader(f"{directory}/{file}")
-                documents.extend(loader.load())
-            elif file.endswith('.docx'):
-                loader = Docx2txtLoader(f"{directory}/{file}")
-                documents.extend(loader.load())
-        
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200
-        )
-        texts = text_splitter.split_documents(documents)
-        
-        # Store in Pinecone
-        self.vectorstore.add_documents(texts)
+        try:
+            documents = []
+            for file in os.listdir(directory):
+                if file.endswith('.txt'):
+                    loader = TextLoader(f"{directory}/{file}")
+                    documents.extend(loader.load())
+                elif file.endswith('.docx'):
+                    loader = Docx2txtLoader(f"{directory}/{file}")
+                    documents.extend(loader.load())
+            
+            # More memory-efficient text splitting
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=500,  # Reduced from 1000
+                chunk_overlap=100,  # Reduced from 200
+                length_function=len,
+                is_separator_regex=False
+            )
+            texts = text_splitter.split_documents(documents)
+            
+            # Add documents in smaller batches
+            batch_size = 100
+            for i in range(0, len(texts), batch_size):
+                batch = texts[i:i + batch_size]
+                self.vectorstore.add_documents(batch)
+                
+        except Exception as e:
+            print(f"Error loading documents: {str(e)}")
 
     async def save_chat_history(self, session_id: str, message: dict):
         try:
@@ -222,25 +220,34 @@ class ChatBot:
             return []
 
     async def process_message(self, message: str, session_id: str) -> str:
-    # Save incoming message to history
-        await self.save_chat_history(session_id, {
-            "role": "user",
-            "content": message
-        })
+        try:
+            # Save incoming message to history
+            await self.save_chat_history(session_id, {
+                "role": "user",
+                "content": message
+            })
 
-         # Check if it's a scheduling request
-        if any(word in message.lower() for word in ["schedule", "meeting", "consultation", "book", "appointment"]):
-            response = await self.handle_scheduling()
-        else:
-            response = await self.search_documents(message, session_id)
+            # Check if it's a scheduling request
+            if any(word in message.lower() for word in ["schedule", "meeting", "consultation", "book", "appointment"]):
+                response = await self.handle_scheduling()
+            else:
+                # Initialize Pinecone if not already done
+                if not self.vectorstore:
+                    self.initialize_pinecone()
+                    
+                response = await self.search_documents(message, session_id)
 
-        # Save bot response to history
-        await self.save_chat_history(session_id, {
-            "role": "assistant",
-            "content": response
-        })
+            # Save bot response to history
+            await self.save_chat_history(session_id, {
+                "role": "assistant",
+                "content": response
+            })
 
-        return response
+            return response
+            
+        except Exception as e:
+            print(f"Error processing message: {str(e)}")
+            return "I apologize, but I'm having trouble processing your message. Please try again."
 
 chatbot = ChatBot()
 
