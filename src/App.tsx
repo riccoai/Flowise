@@ -22,6 +22,7 @@ import BlogCard from './components/BlogCard';
 import NewsletterSignup from './components/NewsletterSignup';
 import PrivacyPolicy from './components/PrivacyPolicy.tsx';
 import ChatWidget from './components/ChatWidget';
+import AnimatedStat from './components/AnimatedStat';
 
 
 interface ServiceDetails {
@@ -153,6 +154,7 @@ const App: React.FC = () => {
   const [isMatrixActive, setIsMatrixActive] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [areCardsExpanded, setAreCardsExpanded] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -269,7 +271,7 @@ const App: React.FC = () => {
           <Route path="/" element={
             <>
               {/* Hero Section */}
-              <section id="hero" className="min-h-[50vh] flex items-center justify-center relative z-10 pb-0 pt-20">
+              <section id="hero" className="min-h-[50vh] flex items-center justify-center relative z-10 pb-0 pt-32">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -293,14 +295,14 @@ const App: React.FC = () => {
                     <p className="text-xl md:text-2xl text-gray-400 mb-8">
                       Expert AI consulting to enhance your business productivity
                     </p>
-                    <motion.a
-                      href="#contact"
-                      className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-4 rounded-lg transition-colors duration-300 mb-4"
+                    <motion.button
+                      onClick={() => setIsChatOpen(true)}
+                      className="inline-block bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-4 rounded-lg transition-colors duration-300 mb-32"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      Get Started
-                    </motion.a>
+                      Talk to Us
+                    </motion.button>
                   </motion.div>
                 </div>
               </section>
@@ -309,38 +311,9 @@ const App: React.FC = () => {
               <section className="py-4 relative z-10 bg-dark-lighter/50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.6 }}
-                      className="text-center"
-                    >
-                      <h3 className="text-4xl font-bold text-primary mb-2">95%</h3>
-                      <p className="text-gray-400">Efficiency Increase</p>
-                    </motion.div>
-                    
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.6, delay: 0.2 }}
-                      className="text-center"
-                    >
-                      <h3 className="text-4xl font-bold text-primary mb-2">24/7</h3>
-                      <p className="text-gray-400">AI-Powered Support</p>
-                    </motion.div>
-                    
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.6, delay: 0.4 }}
-                      className="text-center"
-                    >
-                      <h3 className="text-4xl font-bold text-primary mb-2">60%</h3>
-                      <p className="text-gray-400">Cost Reduction</p>
-                    </motion.div>
+                    <AnimatedStat end="95%" label="Efficiency Increase" />
+                    <AnimatedStat end="24/7" label="AI-Powered Support" />
+                    <AnimatedStat end="60%" label="Cost Reduction" />
                   </div>
                 </div>
               </section>
@@ -547,7 +520,7 @@ const App: React.FC = () => {
           </div>
         </footer>
       </div>
-      <ChatWidget />
+      <ChatWidget isOpen={isChatOpen} setIsOpen={setIsChatOpen} />
     </BrowserRouter>
   );
 }

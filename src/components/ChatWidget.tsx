@@ -7,8 +7,12 @@ interface Message {
     content: string;
 }
 
-const ChatWidget: React.FC = () => {
-    const [isOpen, setIsOpen] = useState<boolean>(false);
+interface ChatWidgetProps {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+}
+
+const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, setIsOpen }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState<string>('');
     const [ws, setWs] = useState<WebSocket | null>(null);
